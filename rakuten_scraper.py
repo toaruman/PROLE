@@ -212,7 +212,7 @@ if __name__ == "__main__":
         print(f"\n==== {input_url} のスクレイピングを開始 ====")
 
         scraper = RakutenScraper(input_url)
-        max_pages = 200  # 必要に応じて変更
+        max_pages = 5  # 必要に応じて変更
         crawl_pagination(scraper, input_url, max_pages)
 
         item_urls = scraper.get_item_url()
