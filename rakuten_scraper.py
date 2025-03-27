@@ -238,7 +238,8 @@ if __name__ == "__main__":
         if not os.path.exists(csv_dir):
             os.makedirs(csv_dir)
 
-        filename = f"{today}-company_info.csv"
+        now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"{now}-company_info.csv"
         output_path = os.path.join(csv_dir, filename)
 
         with open(output_path, 'w', newline='', encoding='utf-8-sig') as f:
@@ -249,6 +250,7 @@ if __name__ == "__main__":
                 writer.writerow(row)
 
         print(f"\n--- CSV出力完了 ---\nファイル: {output_path}")
+
 
         # 既存リストへの新規ショップURLの追記（ショップIDで重複チェック）
         new_shops = {res["shop_url"] for res in results if get_shop_id(res["shop_url"]) not in existing_shop_ids}
