@@ -17,7 +17,10 @@ today = str(datetime.date.today())
 
 # User-Agent ヘッダーを追加
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+    "Referer": "https://www.rakuten.co.jp/",
+    "DNT": "1"
 }
 
 def get_shop_id(shop_url):
@@ -63,13 +66,13 @@ class RakutenScraper:
             return False
 
     def get_item_url(self):
-        pattern = r'^https://item\.rakuten\.co\.jp/([^/]+)/(\d+)/?$'
+        pattern = r'^https://item\.rakuten\.co\.jp/([^/]+)/(+)/?$'
         self.item_page_list = [url for url in self.master_list if url and re.match(pattern, url)]
         return self.item_page_list
 
     def extract_shop_urls(self, existing_shop_ids=None):
         shop_urls = set()
-        pattern_item = r'^https://item\.rakuten\.co\.jp/([^/]+)/(\d+)/?$'
+        pattern_item = r'^https://item\.rakuten\.co\.jp/([^/]+)/(+)/?$'
         pattern_shop = r'^https://www\.rakuten\.(?:co\.jp|ne\.jp)/(?:gold/)?([^/]+)/?$'
         for url in self.master_list:
             m_shop = re.match(pattern_shop, url)
@@ -129,7 +132,7 @@ def crawl_pagination(scraper, start_url, max_pages=10):
     while current_url and pages_crawled < max_pages:
         print(f"【ページ {pages_crawled+1} をクロール中】 {current_url}")
         scraper.simple_request(current_url, first=True)
-        time.sleep(random.uniform(1, 1.5))
+        time.sleep(random.uniform(3, 5))
 
         try:
             r = requests.get(current_url, headers=HEADERS, timeout=15)
@@ -147,77 +150,3 @@ def crawl_pagination(scraper, start_url, max_pages=10):
             print("次のページが見つかりません。")
             break
     print(f"合計 {pages_crawled} ページをクロールしました。")
-
-if __name__ == "__main__":
-    existing_companies_file = "./rakuten_scraping.csv"
-    existing_shop_ids = set()
-    if os.path.exists(existing_companies_file):
-        print(f"既存の企業リスト {existing_companies_file} を読み込みます。")
-        with open(existing_companies_file, 'r', encoding='utf-8-sig') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                shop_url = row.get("shop_url", "").strip()
-                shop_id = get_shop_id(shop_url)
-                if shop_id:
-                    existing_shop_ids.add(shop_id)
-        print(f"既存のショップID数: {len(existing_shop_ids)}")
-    else:
-        print("既存の企業リストが見つかりません。")
-
-    print("例: https://www.rakuten.co.jp/category/110729/ または https://search.rakuten.co.jp/search/mall/レディースファッション")
-    with open("urls.txt", "r", encoding="utf-8") as f:
-        url_list = [line.strip() for line in f if line.strip()]
-
-    for input_url in url_list:
-        print(f"\n==== {input_url} のスクレイピングを開始 ====")
-
-        scraper = RakutenScraper(input_url)
-        max_pages = 200
-        crawl_pagination(scraper, input_url, max_pages)
-
-        item_urls = scraper.get_item_url()
-        print(f"\n最終的な商品ページURL数: {len(item_urls)}")
-
-        shop_urls = scraper.extract_shop_urls(existing_shop_ids)
-        print(f"取得した新規ショップURLの数: {len(shop_urls)}")
-
-        results = []
-        for shop_url in shop_urls:
-            info_url = shop_url.rstrip('/') + '/info.html'
-            company_name, telephone = get_company_info_from_info_page(shop_url)
-            results.append({
-                "shop_url": shop_url,
-                "info_url": info_url,
-                "company_name": company_name,
-                "telephone": telephone
-            })
-            time.sleep(random.uniform(1, 2))
-
-        csv_dir = "./csv_data/"
-        if not os.path.exists(csv_dir):
-            os.makedirs(csv_dir)
-
-        now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        filename = f"{now}-company_info.csv"
-        output_path = os.path.join(csv_dir, filename)
-
-        with open(output_path, 'w', newline='', encoding='utf-8-sig') as f:
-            fieldnames = ["shop_url", "info_url", "company_name", "telephone"]
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            for row in results:
-                writer.writerow(row)
-
-        print(f"\n--- CSV出力完了 ---\nファイル: {output_path}")
-
-        new_shops = {res["shop_url"] for res in results if get_shop_id(res["shop_url"]) not in existing_shop_ids}
-        if new_shops:
-            with open(existing_companies_file, 'a', newline='', encoding='utf-8-sig') as f:
-                writer = csv.DictWriter(f, fieldnames=["shop_url"])
-                for shop in new_shops:
-                    writer.writerow({"shop_url": shop})
-            print(f"\n--- 新規ショップURLを既存企業リストに追加しました ---\nファイル: {existing_companies_file}")
-        else:
-            print("新しいショップURLは見つかりませんでした。")
-
-        print("処理が完了しました。")
