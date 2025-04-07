@@ -1,32 +1,36 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 import requests
 import time
 import datetime
 import random
 from bs4 import BeautifulSoup
 import os
-import sys
 import re
 import csv
 from urllib.parse import urljoin
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
-# 現在日時（ファイル名用）
+# 日付取得
 today = str(datetime.date.today())
 
-# User-Agent ヘッダーを追加
+# セッションとリトライ設定
+session = requests.Session()
+retries = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+session.mount('https://', HTTPAdapter(max_retries=retries))
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
     "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
     "Referer": "https://www.rakuten.co.jp/",
-    "DNT": "1"
+    "Connection": "keep-alive"
 }
+
 
 def get_shop_id(shop_url):
     pattern = r'^https://www\.rakuten\.(?:co\.jp|ne\.jp)/(?:gold/)?([^/]+)/?$'
     m = re.match(pattern, shop_url)
     return m.group(1) if m else None
+
 
 class RakutenScraper:
     def __init__(self, base_url):
@@ -38,7 +42,7 @@ class RakutenScraper:
     def simple_request(self, url, first=False):
         print(f"アクセス中: {url} | 既存リンク数: {len(self.master_list)}")
         try:
-            r = requests.get(url, headers=HEADERS, timeout=(30.0, 47.5))
+            r = session.get(url, headers=HEADERS, timeout=(30.0, 47.5))
         except requests.exceptions.RequestException as e:
             print(f"リクエストエラー: {e}")
             return False
@@ -66,13 +70,15 @@ class RakutenScraper:
             return False
 
     def get_item_url(self):
-        pattern = r'^https://item\.rakuten\.co\.jp/([^/]+)/(+)/?$'
+        pattern = r'^https://item\.rakuten\.co\.jp/([^/]+)/(
+?\d+)/?$'
         self.item_page_list = [url for url in self.master_list if url and re.match(pattern, url)]
         return self.item_page_list
 
     def extract_shop_urls(self, existing_shop_ids=None):
         shop_urls = set()
-        pattern_item = r'^https://item\.rakuten\.co\.jp/([^/]+)/(+)/?$'
+        pattern_item = r'^https://item\.rakuten\.co\.jp/([^/]+)/(
+?\d+)/?$'
         pattern_shop = r'^https://www\.rakuten\.(?:co\.jp|ne\.jp)/(?:gold/)?([^/]+)/?$'
         for url in self.master_list:
             m_shop = re.match(pattern_shop, url)
@@ -90,41 +96,6 @@ class RakutenScraper:
         self.shop_url_list = shop_urls
         return list(shop_urls)
 
-def get_company_info_from_info_page(shop_url):
-    info_url = shop_url.rstrip('/') + '/info.html'
-    print(f"取得する企業情報ページ: {info_url}")
-
-    try:
-        response = requests.get(info_url, headers=HEADERS, timeout=15)
-        response.raise_for_status()
-    except Exception as e:
-        print("企業情報ページの取得に失敗しました:", e)
-        return "Not Found", "Not Found"
-
-    soup = BeautifulSoup(response.content, 'html.parser')
-    company_name = "Not Found"
-    phone_number = "Not Found"
-
-    dl_tag = soup.find("dl")
-    if dl_tag:
-        dt_tags = dl_tag.find_all("dt")
-        for dt in dt_tags:
-            dt_text = dt.get_text(" ", strip=True)
-            if not dt_text:
-                continue
-            pattern = r'(.*?株式会社.*?)(?=〒|TEL:|FAX:|代表者:|店舗運営責任者:|店舗セキュリティ責任者:|購入履歴|$)'
-            match = re.search(pattern, dt_text)
-            if match:
-                company_name = match.group(1).strip()
-                break
-
-    tel_elem = soup.find(text=re.compile("TEL:"))
-    if tel_elem:
-        match = re.search(r'TEL:\s*([\d\-]+)', tel_elem)
-        if match:
-            phone_number = match.group(1)
-
-    return company_name, phone_number
 
 def crawl_pagination(scraper, start_url, max_pages=10):
     current_url = start_url
@@ -132,10 +103,10 @@ def crawl_pagination(scraper, start_url, max_pages=10):
     while current_url and pages_crawled < max_pages:
         print(f"【ページ {pages_crawled+1} をクロール中】 {current_url}")
         scraper.simple_request(current_url, first=True)
-        time.sleep(random.uniform(3, 5))
+        time.sleep(random.uniform(1, 1.5))
 
         try:
-            r = requests.get(current_url, headers=HEADERS, timeout=15)
+            r = session.get(current_url, headers=HEADERS, timeout=15)
             r.raise_for_status()
             soup = BeautifulSoup(r.content, 'html.parser')
         except Exception as e:
