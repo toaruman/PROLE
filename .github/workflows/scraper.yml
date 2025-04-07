@@ -1,8 +1,8 @@
 name: Run Rakuten Scraper
 
 on:
-  #schedule:
-  #  - cron: '0 7 * * *'  # JST 16:00 に毎日実行
+  schedule:
+    - cron: '0 17 * * *'  # JST 2:00 実行（UTCで17:00）
   workflow_dispatch:
 
 jobs:
