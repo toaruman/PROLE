@@ -132,12 +132,14 @@ if __name__ == "__main__":
     # 書き出し
     if new_shops:
         os.makedirs("csv_data", exist_ok=True)
-        filename = f"csv_data/{today}_company_info.csv"
+        now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")  # ★ 時間付きに修正
+        filename = f"csv_data/{now}_company_info.csv"  # ★ 修正されたファイル名
         with open(filename, "w", newline='', encoding="utf-8-sig") as f:
             writer = csv.DictWriter(f, fieldnames=["shop_url", "info_url", "company_name", "telephone"])
             writer.writeheader()
             writer.writerows(new_shops)
         print(f"💾 出力完了: {filename}")
+
 
         # 既存リスト更新
         with open(existing_file, 'a', newline='', encoding='utf-8-sig') as f:
