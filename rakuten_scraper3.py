@@ -24,43 +24,40 @@ def get_shop_id(shop_url):
 
 # === info.htmlから会社名・電話番号抽出 ===
 def get_company_info_from_info_page(shop_url):
-    for base in ["https://www.rakuten.co.jp", "https://www.rakuten.ne.jp/gold"]:
-        info_url = f"{base}/{get_shop_id(shop_url)}/info.html"
-        print(f"🔍 アクセス中: {info_url}")
-        try:
-            r = requests.get(info_url, headers=HEADERS, timeout=15)
-            r.raise_for_status()
-            soup = BeautifulSoup(r.content, 'html.parser')
+    info_url = shop_url.rstrip('/') + '/info.html'
 
-            company_name = "Not Found"
-            phone_number = "Not Found"
+    print(f"🔍 アクセス中: {info_url}")
+    try:
+        r = requests.get(info_url, headers=HEADERS, timeout=15)
+        r.raise_for_status()
+        soup = BeautifulSoup(r.content, 'html.parser')
 
-            dl_tag = soup.find("dl")
-            if dl_tag:
-                dt_tags = dl_tag.find_all("dt")
-                for dt in dt_tags:
-                    dt_text = dt.get_text(" ", strip=True)
-                    if not dt_text:
-                        continue
-                    # 「株式会社」を含み、前後30文字までに限定（有限会社などは除外）
-                    pattern = r'([\s\S]{0,30}株式会社[\s\S]{0,30})(?=〒|TEL:|FAX:|代表者:|店舗運営責任者:|店舗セキュリティ責任者:|購入履歴|$)'
-                    match = re.search(pattern, dt_text)
-                    if match:
-                        company_name = match.group(1).strip()
-                        break
+        company_name = "Not Found"
+        phone_number = "Not Found"
 
-
-
-            tel_elem = soup.find(text=re.compile("TEL:"))
-            if tel_elem:
-                match = re.search(r'TEL:\s*([\d\-]+)', tel_elem)
+        dl_tag = soup.find("dl")
+        if dl_tag:
+            dt_tags = dl_tag.find_all("dt")
+            for dt in dt_tags:
+                dt_text = dt.get_text(" ", strip=True)
+                if not dt_text:
+                    continue
+                pattern = r'([\s\S]{0,30}株式会社[\s\S]{0,30})(?=〒|TEL:|FAX:|代表者:|店舗運営責任者:|店舗セキュリティ責任者:|購入履歴|$)'
+                match = re.search(pattern, dt_text)
                 if match:
-                    phone_number = match.group(1)
+                    company_name = match.group(1).strip()
+                    break
 
-            return company_name, phone_number
-        except Exception:
-            continue
-    return "Not Found", "Not Found"
+        tel_elem = soup.find(string=re.compile("TEL:"))  # `text=` → `string=` に修正済み
+        if tel_elem:
+            match = re.search(r'TEL:\s*([\d\-]+)', tel_elem)
+            if match:
+                phone_number = match.group(1)
+
+        return company_name, phone_number
+    except Exception as e:
+        print(f"❌ 取得エラー: {e}")
+        return "Not Found", "Not Found"
 
 # === 商品検索API実行 ===
 def get_product_urls_from_keyword(keyword, existing_shop_ids):
