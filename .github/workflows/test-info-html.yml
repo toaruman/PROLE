@@ -1,0 +1,23 @@
+name: Test Rakuten Info HTML
+
+on:
+  workflow_dispatch:  # 手動トリガー用（GitHub上から「Run workflow」で実行できる）
+
+jobs:
+  test-html:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 lxml
+
+      - name: Run test script
+        run: python test_info_html.py
