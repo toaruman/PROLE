@@ -30,7 +30,7 @@ def get_company_info_from_info_page(shop_url):
     try:
         r = requests.get(info_url, headers=HEADERS, timeout=15)
         r.raise_for_status()
-        soup = BeautifulSoup(r.content, 'html.parser')
+        soup = BeautifulSoup(r.content, 'lxml')
 
         company_name = "Not Found"
         phone_number = "Not Found"
