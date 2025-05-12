@@ -1,13 +1,15 @@
 name: Run Rakuten Scraper
 
 on:
-  schedule:
-    - cron: '0 17 * * *'  # JST 2:00 実行（UTCで17:00）
+  #schedule:
+  #  - cron: '0 17 * * *'  # JST 2:00 実行（UTCで17:00）
   workflow_dispatch:
 
 jobs:
   run-scraper:
     runs-on: ubuntu-latest
+    env: 
+      RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
 
     steps:
       - name: Checkout code
