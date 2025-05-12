@@ -6,13 +6,14 @@ from bs4 import BeautifulSoup
 import os
 import re
 import csv
+from dotenv import load_dotenv
 
 # === 初期設定 ===
 today = datetime.date.today().strftime("%Y-%m-%d")
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 }
-APPLICATION_ID = "1028443959571093347"
+APPLICATION_ID = os.getenv("RAKUTEN_APP_ID")
 HITS_PER_PAGE = 30
 MAX_PAGES = 100
 
